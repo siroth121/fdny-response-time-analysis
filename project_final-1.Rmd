@@ -1,0 +1,253 @@
+---
+title: "Comparison of Fire Response Times Between Manhattan and Staten Island"
+author: "By JD Hunt, Sophia Roth, Connor Pecht"
+output: html_document
+date: "2025-12-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(gridExtra)
+fdny <- read_csv("C:/STAT240/Project/Incidents_FDNY_v1119.csv")
+head(fdny)
+
+
+fdny_simp <- fdny %>% 
+ select(BOROUGH_DESC, INCIDENT_DATE_TIME, ARRIVAL_DATE_TIME) %>% 
+  mutate(
+    start = mdy_hms(INCIDENT_DATE_TIME),
+    end = mdy_hms(ARRIVAL_DATE_TIME),
+    dur = end - start
+  ) %>% 
+  drop_na() %>% 
+  group_by(BOROUGH_DESC) %>% 
+  summarise(n = n(), avg_resp = mean(dur), sd = sd(dur))
+
+
+head(fdny_simp)
+
+fdny_ttest <- fdny %>% 
+ select(BOROUGH_DESC, INCIDENT_DATE_TIME, ARRIVAL_DATE_TIME) %>% 
+  mutate(
+    start = mdy_hms(INCIDENT_DATE_TIME),
+    end = mdy_hms(ARRIVAL_DATE_TIME),
+    dur = end - start
+  ) %>% 
+  drop_na()
+
+```
+
+
+# Introduction 
+
+The diverse city of New York is host to more than eight million people, making it the most populous city in the United States. In a city so populous and dense, fire response time is an important indicator of possible extra harm by not having emergency services arrive quickly. Split across five boroughs, each with their own unique geography and thus challenges, we chose to analyze the difference in fire response times for the two most dissimilar boroughs to investigate how factors such as population density can impact response times. Our analysis seeks to address the questions of 
+
+**How do fire response times differ between Manhattan and Staten Island?** 
+
+**Why might these response times differ?** 
+
+Through an analysis of the difference in response times paired with a survey of causes such as population density, etc, this reports asserts that Staten Island has a significantly lower fire response time than Manhattan. 
+
+
+# Background
+### Data Collection
+
+The data on fire response time was collected through the website NYC Open Data, which contains free public data published by New York City agencies and other partners. The data on fire response time was reported by FDNY fire (non-EMS) units and was collected in the New York Fire Incident Reporting System (NYFIRS). 
+
+Additionally for our analysis, we compiled data from sources such as the New York Metropolitan Transportation Council and openly available data on FDNY units and their station location in order to attempt to find possible reasons for the discrepancy between the two boroughs. 
+
+### Focus 
+
+Our was to analyze the difference in response time between Manhattan and Staten Island to first see if there was a difference that was statistically significant. 
+
+After finding that there indeed was a statistically significant difference, we went on to explore possible reasons for this difference, which we then used for our analysis and discussion. 
+
+### Data Citations 
+
+**Data Source For # of Fire Stations**
+^[5280Fire. (2021, March 30). New York City Fire Department - FDNY - 5280Fire. https://5280fire.com/home/other-states-fire-apparatus-stations/new-york/new-york-city-fire-department-fdny/]
+
+**Data Source For Population, Land Area, and Density** 
+^[Coordinated Public Transit-Human Services Transportation Plan for NYMTC Region. (n.d.). In The New York City Metropolitan Transportation Council (pp. 3–3). New York City Metropolitan Transportation Council. https://www.nymtc.org/portals/0/pdf/CPT-HSP/NYMTC%20coord%20plan%20NYC%20CH03.pdf]
+
+**Data Source For Response Times**
+^[Incidents responded to by fire companies | NYC Open Data. (2025, October 10). https://data.cityofnewyork.us/Public-Safety/Incidents-Responded-to-by-Fire-Companies/tm6d-hbzd/about_data]
+
+
+# Analysis 
+### Data Tidying 
+
+It is important to note that the original data set contained more than six million rows, with incidents going back to 2013. To streamline our analysis, we chose to test on only the incidents of 2024 which, after removing NA values, amounted to a little more than 145,000 incidents between Manhattan and Staten Island. By exploring the data for an entire year, we ensure that we had a broad set of conditions such as weather, holidays, etc to ensure that the comparison would remain as accurate as possible for the two boroughs. This filtering was done to ensure that the dataset could be exported and analyzed with efficiency, without having a file that was too large and thus too slow to work with within RStudio. 
+
+When we exported the data, we chose to only export the rows which contained either Staten Island or Manhattan to also cut down on the size of the file. Once loaded into RStudio, we selected the columns we needed: borough, the time when the incident was called in, and the arrival time of the FDNY units. The incident and arrival time columns both contained the data and time down to the second, so our next step was a mutate where we created three new columns, start, end, and duration by parsing the original incident and arrival columns and then subtracting them from each other so the response time was found in total seconds. We then grouped by borough and summarized in order to get columns for the average response time, sample size (n), and standard deviation. 
+
+### Data Summary 
+
+```{r, include=FALSE}
+nycdensity <- tibble(
+  borough = c("Manhattan", "Staten Island"),
+  density = c(66940, 7587),
+  area = c(23, 59),
+  pop = c(1537195, 443728),
+  firestations = c(48, 19),
+  stationdensity = firestations/area,
+  stationperson = (firestations/pop)*250000,
+  incidents = c(119897, 25325),
+  spi = firestations/incidents 
+)
+
+```
+
+**GRAPH 1: Total Population**
+
+```{r,echo=FALSE}
+ggplot(nycdensity, aes(x=borough, y = pop, fill = borough)) + geom_col() + labs(x = "Borough of NYC", y = "Total Population", title = "Comparison of Total Population between Manhattan and Staten Island")
+```
+
+By examining the total population between Manhattan and Staten Island, we can contextualize potential differences in average emergency response times between the two boroughs. Population size may influence mean response times due to differences in call volume, service demand and resources. Manhattan has a significantly larger population than Staten Island, with approximately 1,537,195 residents compared to 443,728 residents or a ration of 3.5:1.
+
+**GRAPH 2: Land Area**
+
+```{r, echo=FALSE}
+ggplot(nycdensity, aes(x=borough, y = area, fill = borough)) + geom_col() + labs(x = "Borough of NYC", y = "Land Area (Square Miles)", title = "Comparison of Land Area between Manhattan and Staten Island")
+```
+
+Graph 2 shows that although Manhattan has a significantly larger population, Staten Island has a greater total land area (59 square miles compared to 23 square miles). This introduces a confounding variable in the analysis of mean response times. Staten Island's larger land area may result in a greater average travel distance, influencing the observed sample mean.
+
+**GRAPH 3: Population Density**
+
+```{r, echo=FALSE}
+ggplot(nycdensity, aes(x=borough, y = density, fill = borough)) + geom_col() + labs(x = "Borough of NYC", y = "Density in People per Square Mile", title = "Comparison of Population Density between Manhattan and Staten Island")
+
+```
+
+As shown in Graph 3, Manhattan has a substantially higher population than Staten Island, with over 60,000 people per square mile. The high density indicates a greater concentration of population within a smaller geographic area.
+
+**GRAPH 4: Fire Station Density (per Square Mile)**
+
+```{r, echo=FALSE}
+ggplot(nycdensity, aes(x=borough, y = stationdensity, fill = borough)) + geom_col() + labs(x="Borough of NYC", y = "Number of Fire Stations per Square Mile", title = "Comparison of Fire Station Density by Land Area in Manhattan and Staten Island")
+```
+
+Graph 4 compares the density of fire stations per square mile across the two boroughs. Manhattan has a substantially higher number of fire stations per square mile than Staten Island, suggesting increased availability of emergency services. This may lead to a lower observed mean response time compared to Staten Island. 
+
+**GRAPH 5: Fire Station Density (per 250000 people)**
+
+```{r, echo=FALSE}
+ggplot(nycdensity, aes(x=borough, y = stationperson, fill = borough)) + geom_col() + labs(x="Borough of NYC", y = "Number of Fire Stations per 250,000 People", title = "Comparison of Fire Station Density by Population in Manhattan and Staten Island")
+```
+
+| **Borough**     | **Total Number of Incidents (2024)** |
+|-----------------|---------------------------|
+| Manhattan       | 119,897              |
+| Staten Island   | 25,325            |
+
+Graph 5 shows fire station density normalized by population rather than by land area. When measured as the number of fire stations per 250,000 residents, Staten Island has a higher station-to-population ratio than Manhattan.
+
+  This pattern is consistent with the incident data shown in the table above. Manhattan recorded 119,897 total incidents in 2024, while Staten Island reported 25,325, which is significantly lower than Manhattan. Even though Manhattan has fewer stations per person, it experiences much greater demand, leading to the observed differences in response time.
+
+**GRAPH 6: Fire Station Density (per Number of Incidents in Borough in 2024)**
+
+```{r, echo=FALSE}
+ggplot(nycdensity, aes(x=borough, y = spi, fill = borough)) + geom_col() + labs(x="Borough of NYC", y = "Number of Fire Stations per Number of Incidents (2024)", title = "Comparison of Fire Stations per Number of Incidents in 2024")
+```
+
+Graph 6 displays fire station availability normalized by the number of emergency incidents in 2024. Compared to Manhattan, Staten Island has more fire stations per incident, suggesting that emergency resources per event are higher in Staten Island. This indicates that its fire services were likely under less operational strain during 2024, while Manhattan's services experienced a higher workload per station. The differences help explain the substantially higher number of incidents recorded in Manhattan and the valid context behind the comparison of the boroughs' mean response times.
+
+| **Borough**     | **Average Response Time (2024)** |
+|-----------------|---------------------------|
+| Manhattan       | 387 seconds               |
+| Staten Island   | 341 seconds               |
+
+**GRAPH 7: Density Plot of Fire Response Time, Manhattan vs Staten Island (2024)**
+
+```{r, echo=FALSE, warning=FALSE}
+means <- fdny_ttest %>%
+  group_by(BOROUGH_DESC) %>%
+  summarize(mean_dur = mean(as.numeric(dur)))
+
+ggplot(fdny_ttest, aes(x = as.numeric(dur), fill = BOROUGH_DESC)) +
+  geom_density(alpha = 0.4) + geom_vline(data = means,
+             aes(xintercept = mean_dur, color = BOROUGH_DESC),
+             linewidth = 1,
+             linetype = "dashed") + xlim(c(0, 1100)) + labs(title = "Density Plot of Fire Response Time in NYC Boroughs (2024)", y = "Density", x = "Response Time (Seconds) ", fill = "Boroughs", color = "Mean Average Fire Response Time of Borough")
+```
+
+NOTE: Graph had to be cropped, though there is a significant right-leaning tail.
+
+The distribution for Staten Island has a higher peak and is more concentrated around its mean, indicating more consistent and generally lower response times. The wider spread and right skew in Manhattan imply greater variability in response times. These distributional differences support the hypothesis that Manhattan experiences a higher mean response time than Staten Island and prove the influence of operational constraints and incident volume on emergency services.
+
+```{r, include=FALSE}
+
+n1 <- fdny_simp$n[1]  ; n2 <- fdny_simp$n[2]
+s1 <- fdny_simp$sd[1] ; s2 <- fdny_simp$sd[2]
+df <- (s1^2/n1+s2^2/n2)^2 / ((s1^2/n1)^2/(n1-1)+(s2^2/n2)^2/(n2-1))
+df
+
+conf_interval <- diff(fdny_simp$avg_resp) + c(-1,1) * qt(0.975, df) * sqrt(s1^2/n1+s2^2/n2)
+
+conf_interval
+
+t_obs <- (diff(fdny_simp$avg_resp)-0)/sqrt(s1^2/n1+s2^2/n2)
+
+t_obs
+
+
+pt(t_obs, df)
+dt(t_obs, df)
+
+man <- fdny_ttest %>% filter(BOROUGH_DESC == "1 - Manhattan") %>% pull(dur)
+
+staten <- fdny_ttest %>% filter(BOROUGH_DESC == "3 - Staten Island") %>% pull(dur)
+
+t.test(man, staten, conf.level=0.95)
+
+t.test(man, staten, mu=0, alternative = "greater")
+
+
+```
+
+#### Confidence Intervals
+
+**Confidence Interval for Difference in Mean Fire Response Time Between Manhattan and Staten Island**
+
+We are 95% confident that the difference in mean fire response time between Manhattan and Staten Island is between 43.7 and 49.2 seconds less for Staten Island.
+
+#### Inference Tests 
+
+**T-Test for Manhattan vs Staten Island Mean Fire Response Time**
+
+$\mu_1$ = Manhattan
+
+$\mu_2$ = Staten Island 
+
+>| **Hypothesis:**  |
+>|------------------|
+>|$H_0 : \mu_1 - \mu_2 = 0$| 
+>|$H_a : \mu_1 > \mu_2$    |
+
+We conducted a one-tailed Welch 2-sample t-test to determine the test statistic for our data. 
+
+Our t-test statistic with 53,834 degrees of freedom was: **32.965**.
+
+This extremely large t-value corresponds to a p-value that is effectively 0 for practical purposes (alpha = 0.05).
+
+A p-value this small indicates that if the true population means were equal, observing a difference as large as the one from our sample would be extraordinarily unlikely. 
+
+Because of this, we have decided to reject the null hypothesis and conclude that there is very strong statistical evidence that the true population mean fire respone time in Manhattan is greater than that of Staten Island.
+
+
+# Discussion
+
+Our analysis of mean fire response time between Manhattan and Staten Island show a clear discrepancy in the speed of which fire units are able to respond in the United States' most populous city. Our findings show that on average, Staten Island Fire units are able to arrive on the scene of incidents 43.7 and 49.2 seconds faster than units in Manhattan. In a city like New York with so many people and precious historical landmarks in close quarters, ensuring fire units are able to respond quickly is imperative. This fact is even more apparent in Manhattan than any other borough, with it's large population and extreme density resulting in more frequent incidents. Ultimately, this discrepancy provides a clear reason for increased investment in the fire stations located in Manhattan vs. those in Staten Island. 
+
+In addition to analyzing the mean fire response time, we also analyzed some overall factors that could lead to this discrepancy. A possible cause of increased response time in Manhattan is the greater number of people that could cause a slowdown for responding fire units, such as traffic, pedestrians, etc. When examining the makeup of Staten Island, we found that although Staten Island has less people and more land area, they actually have a greater number of fire stations per person, as well as per incident. This shows that Manhattan is in need of an increase of investment in fire units/stations in order to lower response times to those of Staten Island.
+
+We do admit that our study is not without its limitations. For example, we analyzed only the data from 2024 which while vast, does not allow for us to analyze possible shifts and trends over the years. Additionally, there are more factors which could lead to possible increases of fire response time not discussed in this study such as number of personal vehicles, width of streets, speed limits, location of incidents in relations to stations, etc. This shows that there is a lot of room for more research into the subject, and other avenues to explore and understand in order to determine why the descrepancy exists. 
+
+In conclusion, our analysis of mean fire response time between the New York City boroughs of Manhattan and Staten Island show that there is a significant disparity in the mean fire response time of fire units in Manhattan versus fire units in Staten Island. The data shows that Staten island consistently has faster response times, and thus likely better outcomes in limiting the damage that fires can cause. Graphical representations illustrate this trend, while also highligting some factors that could lead to the discrepancy. All in all, our analysis reveals an important discrepancy and need for further investment into the most dense part of the largest city in the United States.  
