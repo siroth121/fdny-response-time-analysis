@@ -1,6 +1,6 @@
 ---
 title: "Comparison of Fire Response Times Between Manhattan and Staten Island"
-author: "By JD Hunt, Sophia Roth, Connor Pecht"
+author: "By Sofia Roth"
 output: html_document
 date: "2025-12-10"
 ---
@@ -249,5 +249,6 @@ Our analysis of mean fire response time between Manhattan and Staten Island show
 In addition to analyzing the mean fire response time, we also analyzed some overall factors that could lead to this discrepancy. A possible cause of increased response time in Manhattan is the greater number of people that could cause a slowdown for responding fire units, such as traffic, pedestrians, etc. When examining the makeup of Staten Island, we found that although Staten Island has less people and more land area, they actually have a greater number of fire stations per person, as well as per incident. This shows that Manhattan is in need of an increase of investment in fire units/stations in order to lower response times to those of Staten Island.
 
 We do admit that our study is not without its limitations. For example, we analyzed only the data from 2024 which while vast, does not allow for us to analyze possible shifts and trends over the years. Additionally, there are more factors which could lead to possible increases of fire response time not discussed in this study such as number of personal vehicles, width of streets, speed limits, location of incidents in relations to stations, etc. This shows that there is a lot of room for more research into the subject, and other avenues to explore and understand in order to determine why the descrepancy exists. 
+
 
 In conclusion, our analysis of mean fire response time between the New York City boroughs of Manhattan and Staten Island show that there is a significant disparity in the mean fire response time of fire units in Manhattan versus fire units in Staten Island. The data shows that Staten island consistently has faster response times, and thus likely better outcomes in limiting the damage that fires can cause. Graphical representations illustrate this trend, while also highligting some factors that could lead to the discrepancy. All in all, our analysis reveals an important discrepancy and need for further investment into the most dense part of the largest city in the United States.  
